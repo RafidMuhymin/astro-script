@@ -1,0 +1,15 @@
+{
+  "name": "astro-script",
+  "version": "0.1.0",
+  "description": "A simple script management component for Astro",
+  "main": "./index.js",
+  "repository": "https://github.com/RafidMuhymin/astro-script",
+  "author": "Rafid Muhymin",
+  "license": "MIT",
+  "keywords": [
+    "astro-component"
+  ],
+  "scripts": {
+    "test": "echo \"No test specified\""
+  }
+}

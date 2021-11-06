@@ -1,0 +1,119 @@
+---
+import { minify as terse, MinifyOptions } from "terser";
+import fs from "node:fs";
+import { writeFile } from "node:fs/promises";
+import path from "node:path";
+import crypto from "node:crypto";
+import { createRequire } from "node:module";
+const moduleRequire = createRequire(import.meta.url);
+const { JSDOM } = moduleRequire("jsdom");
+
+export interface Props {
+  src?: string | string[];
+  inline?: boolean;
+  minify?: boolean;
+  minifyOptions?: MinifyOptions;
+  publicPath?: string;
+  dev?: boolean;
+}
+
+const {
+  src,
+  inline = true,
+  minify = true,
+  minifyOptions = {},
+  publicPath = "public",
+  dev = import.meta.env.NODE_ENV !== "development",
+} = Astro.props as Props;
+
+const slot = Astro.slots.default;
+
+const sources = Array.isArray(src) ? src : [src];
+
+if (!(src || slot)) {
+  throw new Error(
+    "The src Prop can't be empty when no child script is passed!"
+  );
+}
+
+const script = await (async () => {
+  if (!slot) {
+    sources.forEach((src) => {
+      if (!src.startsWith("/")) {
+        throw new Error(
+          "The src Prop must start with '/' and your JS files must be inside the public folder or resolved with Astro.resolve!"
+        );
+      }
+      if (path.extname(src) !== ".js") {
+        throw new Error("The src Prop must be a JS file!");
+      }
+    });
+
+    if (dev) {
+      let script = "";
+      script = (
+        await Promise.all(
+          sources.map(async (src) => {
+            if (src.startsWith("http://") || src.startsWith("https://")) {
+              return await (await fetch(src)).text();
+            } else {
+              const filepath = src.startsWith("/_astro/")
+                ? src.replace("/_astro/", "")
+                : "public" + src;
+              return fs.readFileSync(filepath, "utf8");
+            }
+          })
+        )
+      ).join("\n");
+
+      script = minify ? (await terse(script, minifyOptions)).code : script;
+
+      if (inline) {
+        return `<script>${script}</script>`;
+      } else {
+        const dir = `${publicPath}/astro-script`;
+        const hash = crypto
+          .createHash("sha256")
+          .update(script)
+          .digest("hex")
+          .substr(0, 8);
+        fs.existsSync(dir) || fs.mkdirSync(dir);
+        return writeFile(`${dir}/${hash}.js`, script).then(
+          () => `<script src="/astro-script/${hash}.js"></script>`
+        );
+      }
+    }
+  }
+})();
+
+if (src && slot) {
+  console.warn(
+    "WARNING: Inlined scripts are ignored when the src Prop is present"
+  );
+}
+---
+
+<!-- prettier-ignore -->
+
+{
+  src
+    ? dev
+      ? script
+      : sources.map((src) => <script src={src} />)
+    : slot
+    ? (async () => {
+        let script = "";
+        if (dev) {
+          const { document } = new JSDOM(await (<slot />)).window;
+          const { scripts } = document;
+          script = [...scripts].map((script) => script.textContent).join("\n");
+          script = `<script>${
+            minify ? (await terse(script)).code : script
+          }</script>`;
+        } else {
+          script = await (<slot />);
+        }
+        return script;
+      })()
+    : ""
+}
