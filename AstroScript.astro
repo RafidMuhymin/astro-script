@@ -1,5 +1,5 @@
 ---
-import { minify as terse, MinifyOptions } from "terser";
+import { minify as terse } from "terser";
 import fs from "node:fs";
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -12,7 +12,7 @@ export interface Props {
   src?: string | string[];
   inline?: boolean;
   minify?: boolean;
-  minifyOptions?: MinifyOptions;
+  minifyOptions?: object;
   publicPath?: string;
   dev?: boolean;
 }
