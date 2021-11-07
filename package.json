@@ -1,6 +1,6 @@
 {
   "name": "astro-script",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A simple script management component for Astro",
   "main": "./index.js",
   "repository": "https://github.com/RafidMuhymin/astro-script",
